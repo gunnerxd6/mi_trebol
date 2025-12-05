@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'data/services/api_service.dart';
+import 'data/services/storage_service.dart';
+import 'routes/app_pages.dart';
+import 'routes/app_routes.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Cargar variables de entorno
+  await dotenv.load(fileName: ".env");
+  
+  // Inicializar servicios
+  await initServices();
+  
   runApp(const MyApp());
 }
 
-class CounterController extends GetxController {
-  final count = 0.obs;
-  void increment() => count.value++;
+Future<void> initServices() async {
+  // Inicializar StorageService
+  await Get.putAsync(() => StorageService().init());
+  
+  // Inicializar ApiService
+  await Get.putAsync(() => ApiService().init());
 }
 
 class MyApp extends StatelessWidget {
@@ -31,8 +47,14 @@ class MyApp extends StatelessWidget {
       brightness: Brightness.dark,
     );
 
+    // Determinar ruta inicial basada en si hay sucursal guardada
+    final storageService = Get.find<StorageService>();
+    final initialRoute = storageService.hasSucursal() 
+        ? Routes.consultaPrecios 
+        : Routes.login;
+
     return GetMaterialApp(
-      title: 'Mi Trebol',
+      title: 'Mi Trébol',
       theme: ThemeData(
         colorScheme: lightColorScheme,
         useMaterial3: true,
@@ -58,40 +80,9 @@ class MyApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.system,
-      home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final CounterController controller = Get.put(CounterController());
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contador con GetX'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Has presionado el botón esta cantidad de veces:'),
-            const SizedBox(height: 8),
-            Obx(() => Text(
-                  '${controller.count.value}',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                )),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: controller.increment,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      initialRoute: initialRoute,
+      getPages: AppPages.routes,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
